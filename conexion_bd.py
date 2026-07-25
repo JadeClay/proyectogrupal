@@ -105,11 +105,11 @@ def buscar_usuario_por_id(id_usuario):
 def insertar_usuario(nombre, email, password, activo=1):
     """
     Inserta un nuevo usuario.
-    Retorna el ID insertado o None si hubo error.
+    Retorna (id, None) si salio bien, o (None, "mensaje_error") si falló.
     """
     conexion = conectar()
     if not conexion:
-        return None
+        return None, "No se pudo conectar a la base de datos"
 
     try:
         cursor = conexion.cursor()
@@ -119,12 +119,11 @@ def insertar_usuario(nombre, email, password, activo=1):
         """
         cursor.execute(sql, (nombre, email, password, activo))
         conexion.commit()
-        return cursor.lastrowid
+        return cursor.lastrowid, None
 
     except Error as e:
-        print(f"Error al insertar usuario: {e}")
         conexion.rollback()
-        return None
+        return None, str(e)
 
     finally:
         if 'cursor' in locals() and cursor:
@@ -136,11 +135,11 @@ def insertar_usuario(nombre, email, password, activo=1):
 def actualizar_usuario(id_usuario, nombre=None, email=None, password=None):
     """
     Actualiza los campos de un usuario (solo los no None).
-    Retorna True si se actualizó, False si hubo error.
+    Retorna (True, None) si salio bien, o (False, "mensaje_error") si falló.
     """
     conexion = conectar()
     if not conexion:
-        return False
+        return False, "No se pudo conectar a la base de datos"
 
     try:
         cursor = conexion.cursor()
@@ -158,18 +157,17 @@ def actualizar_usuario(id_usuario, nombre=None, email=None, password=None):
             valores.append(password)
 
         if not campos:
-            return False
+            return False, "No hay campos para actualizar"
 
         valores.append(id_usuario)
         sql = f"UPDATE usuarios SET {', '.join(campos)} WHERE id = %s"
         cursor.execute(sql, valores)
         conexion.commit()
-        return cursor.rowcount > 0
+        return cursor.rowcount > 0, None
 
     except Error as e:
-        print(f"Error al actualizar usuario: {e}")
         conexion.rollback()
-        return False
+        return False, str(e)
 
     finally:
         if 'cursor' in locals() and cursor:
@@ -181,23 +179,66 @@ def actualizar_usuario(id_usuario, nombre=None, email=None, password=None):
 def eliminar_usuario(id_usuario):
     """
     Elimina (desactiva) un usuario poniendo activo = 0.
-    Retorna True si se eliminó, False si hubo error.
+    Retorna (True, None) si salio bien, o (False, "mensaje_error") si falló.
     """
     conexion = conectar()
     if not conexion:
-        return False
+        return False, "No se pudo conectar a la base de datos"
 
     try:
         cursor = conexion.cursor()
         sql = "UPDATE usuarios SET activo = 0 WHERE id = %s"
         cursor.execute(sql, (id_usuario,))
         conexion.commit()
-        return cursor.rowcount > 0
+        return cursor.rowcount > 0, None
 
     except Error as e:
-        print(f"Error al eliminar usuario: {e}")
         conexion.rollback()
-        return False
+        return False, str(e)
+
+    finally:
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if conexion:
+            conexion.close()
+
+
+def buscar_usuarios(texto=""):
+    """
+    Busca usuarios por nombre o email (activo = 1).
+    Si texto esta vacio, retorna todos los usuarios activos.
+    Retorna una lista de tuplas (id, nombre, email, password).
+    """
+    conexion = conectar()
+    if not conexion:
+        return []
+
+    try:
+        cursor = conexion.cursor()
+        if texto:
+            sql = """
+                SELECT id, nombre, email, password
+                FROM usuarios
+                WHERE activo = 1 AND (
+                    nombre LIKE %s OR email LIKE %s
+                )
+                ORDER BY nombre
+            """
+            patron = f"%{texto}%"
+            cursor.execute(sql, (patron, patron))
+        else:
+            sql = """
+                SELECT id, nombre, email, password
+                FROM usuarios
+                WHERE activo = 1
+                ORDER BY nombre
+            """
+            cursor.execute(sql)
+        return cursor.fetchall()
+
+    except Error as e:
+        print(f"Error al buscar usuarios: {e}")
+        return []
 
     finally:
         if 'cursor' in locals() and cursor:
@@ -743,6 +784,43 @@ def eliminar_servicio(id_servicio):
     except Error as e:
         conexion.rollback()
         return False, str(e)
+
+    finally:
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if conexion:
+            conexion.close()
+
+
+def buscar_datos_factura(id_servicio):
+    """
+    Busca todos los datos necesarios para generar la factura de un servicio.
+    Retorna una tupla con toda la info o None si no se encontro.
+    Tupla: (servicio_id, fecha, costo, descripcion, estado,
+            placa, marca, modelo, anio,
+            cliente_nombre, cliente_email, cliente_telefono)
+    """
+    conexion = conectar()
+    if not conexion:
+        return None
+
+    try:
+        cursor = conexion.cursor()
+        sql = """
+            SELECT s.id, s.fecha, s.costo, s.descripcion, s.estado,
+                   v.placa, v.marca, v.modelo, v.anio,
+                   c.nombre, c.email, c.telefono
+            FROM servicios s
+            JOIN vehiculos v ON s.id_vehiculo = v.id
+            JOIN clientes c ON v.id_cliente = c.id
+            WHERE s.id = %s AND s.activo = 1
+        """
+        cursor.execute(sql, (id_servicio,))
+        return cursor.fetchone()
+
+    except Error as e:
+        print(f"Error al buscar datos de factura: {e}")
+        return None
 
     finally:
         if 'cursor' in locals() and cursor:
