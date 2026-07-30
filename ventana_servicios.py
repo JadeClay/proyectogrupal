@@ -17,6 +17,66 @@ from fpdf import FPDF
 from tkinter import filedialog
 import os
 
+def crear_pdf_factura(datos, ruta, ventana):
+    (serv_id, fecha, costo, descripcion, estado_serv,
+     placa, marca, modelo, anio, cliente_nombre, cliente_email, cliente_telefono) = datos
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.cell(0, 15, "FACTURA", new_x="LMARGIN", new_y="NEXT", align="C")
+    
+    pdf.set_font("Helvetica", "", 12)
+    pdf.cell(0, 8, f"Servicio #{serv_id}", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.ln(10)
+    
+    # Linea separadora
+    pdf.set_draw_color(0, 0, 0)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
+    
+    # --- Datos del cliente ---
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.cell(0, 8, "CLIENTE", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(0, 7, f"Nombre:   {cliente_nombre}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"Email:    {cliente_email}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"Telefono: {cliente_telefono}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(5)
+    
+    # --- Datos del vehiculo ---
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.cell(0, 8, "VEHICULO", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(0, 7, f"Placa:   {placa}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"Marca:   {marca}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"Modelo:  {modelo}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"Anio:    {anio}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(5)
+    
+    # --- Detalle del servicio ---
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.cell(0, 8, "DETALLE DEL SERVICIO", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(0, 7, f"Fecha:       {fecha}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"Descripcion: {descripcion}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"Estado:      {estado_serv}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(8)
+    
+    # Linea separadora
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
+    
+    # --- Subtotal ---
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.cell(0, 10, f"SUBTOTAL:  ${costo}", new_x="LMARGIN", new_y="NEXT", align="R")
+    pdf.cell(0, 10, f"ITBIS (18%):  ${(costo*18)/100:.2f}", new_x="LMARGIN", new_y="NEXT", align="R")
+    pdf.cell(0, 10, f"TOTAL A PAGAR:  ${costo + (costo*18)/100:.2f}", new_x="LMARGIN", new_y="NEXT", align="R")
+    
+    
+    pdf.output(ruta)
+    messagebox.showinfo("Factura generada", f"Factura guardada en:\n{ruta}", parent=ventana)
+    os.startfile(ruta)
 
 def dialogo_servicio(parent, titulo="Servicio", fecha="", costo="", descripcion="", estado="Pendiente", vehiculo_id=None):
     resultado = [None]
@@ -226,59 +286,8 @@ def generar_factura_ui(ventana, estado):
     if not ruta:
         return
 
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Helvetica", "B", 20)
-    pdf.cell(0, 15, "FACTURA", new_x="LMARGIN", new_y="NEXT", align="C")
-
-    pdf.set_font("Helvetica", "", 12)
-    pdf.cell(0, 8, f"Servicio #{serv_id}", new_x="LMARGIN", new_y="NEXT", align="C")
-    pdf.ln(10)
-
-    # Linea separadora
-    pdf.set_draw_color(0, 0, 0)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(5)
-
-    # --- Datos del cliente ---
-    pdf.set_font("Helvetica", "B", 13)
-    pdf.cell(0, 8, "CLIENTE", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", "", 11)
-    pdf.cell(0, 7, f"Nombre:   {cliente_nombre}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 7, f"Email:    {cliente_email}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 7, f"Telefono: {cliente_telefono}", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(5)
-
-    # --- Datos del vehiculo ---
-    pdf.set_font("Helvetica", "B", 13)
-    pdf.cell(0, 8, "VEHICULO", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", "", 11)
-    pdf.cell(0, 7, f"Placa:   {placa}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 7, f"Marca:   {marca}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 7, f"Modelo:  {modelo}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 7, f"Anio:    {anio}", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(5)
-
-    # --- Detalle del servicio ---
-    pdf.set_font("Helvetica", "B", 13)
-    pdf.cell(0, 8, "DETALLE DEL SERVICIO", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", "", 11)
-    pdf.cell(0, 7, f"Fecha:       {fecha}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 7, f"Descripcion: {descripcion}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 7, f"Estado:      {estado_serv}", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(8)
-
-    # Linea separadora
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(5)
-
-    # --- Total ---
-    pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 10, f"TOTAL:  ${costo}", new_x="LMARGIN", new_y="NEXT", align="R")
-
-    pdf.output(ruta)
-    messagebox.showinfo("Factura generada", f"Factura guardada en:\n{ruta}", parent=ventana)
-    os.startfile(ruta)
+    crear_pdf_factura(datos, ruta, ventana)
+    
 
 def volver_al_menu(ventana):
     ventana.master.deiconify()
